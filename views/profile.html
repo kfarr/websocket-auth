@@ -8,12 +8,16 @@
 <p>
 ID: {{ user.id }}<br/>
 Username: {{ user.username }}<br/>
-Name: {{ user.displayName}}<br/>
-{% if user.emails %}
+Name: {{ user.displayName }}<br/>
+Email: {{ user.email }}
+Emails: {{ user.emails }}
+{% for photo in user.photos %}
+Photo: {{ photo.value }}
+{% endfor %}
+
 {% for email in user.emails %}
   Email: {{ email.value }}<br/>
 {% endfor %}
-{% endif %}
 </p>
 
 {% endblock %}

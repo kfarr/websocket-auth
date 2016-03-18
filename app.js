@@ -6,8 +6,9 @@ var cookieParser = require('cookie-parser');
 var bodyParser = require('body-parser');
 var swig = require('swig');
 var passport = require('passport');
-var TwitterStrategy = require('passport-twitter').Strategy;
 var session = require('express-session');
+var TwitterStrategy = require('passport-twitter').Strategy;
+var ensureLoggedIn = require('connect-ensure-login').ensureLoggedIn;
 
 var routes = require('./routes/index');
 var users = require('./routes/users');
@@ -16,7 +17,8 @@ var app = express();
 
 function Player(connection, id) {
     this.connection = connection;
-    this.id = id;
+    this.id = id; // populated by twitter unique ID
+    this.name = ""; //populated with twitter username
     this.position = {x: 0, y: 0, z: 0};
     this.orientation = {x: 0, y: 0, z: 0, w: 1};
     this.kills = 0;
@@ -34,6 +36,7 @@ app.engine('html', swig.renderFile);
 app.set('view engine', 'html');
 app.set('views', path.join(__dirname, 'views'));
 
+// middleware setup - order is important here!
 //app.use(favicon(path.join(__dirname, 'public', 'favicon.ico')));
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(logger('dev'));
@@ -44,63 +47,6 @@ app.use(session({ secret: 'keyboard cat', resave: true, saveUninitialized: true 
 app.use(passport.initialize());
 app.use(passport.session());
 
-passport.serializeUser(function(user, done) {
-  console.log("serializeUser requested, user = " + user);
-  players[user] = new Player(null, user);
-  done(null, user);
-});
-
-passport.deserializeUser(function(id, done) {
-  console.log("deserializeUser requested, id = " + id);
-  done(null, players[id]);
-//  User.findById(id, function(err, user) {
-//    done(err, user);
-//  });
-});
-
-// routes
-app.use('/', routes);
-app.use('/users', users);
-
-// twitter auth routes - TODO this could be placed in /users
-app.get('/auth/twitter',
-  passport.authenticate('twitter'));
-
-app.get('/auth/twitter/callback',
-  passport.authenticate('twitter', { failureRedirect: '/login' }),
-  function(req, res) {
-    // Successful authentication, redirect home.
-    res.redirect('/');
-  });
-
-
-// Define routes.
-app.get('/',
-  function(req, res) {
-    res.render('home', { user: req.user });
-});
-
-app.get('/login',
-  function(req, res){
-    res.render('login');
-});
-
-  app.get('/login/twitter',
-    passport.authenticate('twitter'));
-
-  app.get('/login/twitter/return',
-    passport.authenticate('twitter', { failureRedirect: '/login' }),
-    function(req, res) {
-      res.redirect('/');
-    });
-
-  app.get('/profile',
-    require('connect-ensure-login').ensureLoggedIn(),
-    function(req, res){
-      res.render('profile', { user: req.user });
-    });
-
-
 // passport - sessions - twitter
 passport.use(new TwitterStrategy({
     consumerKey: "Abv0qwzcRUkqCU9sPDl0BB2rB",
@@ -110,12 +56,47 @@ passport.use(new TwitterStrategy({
   function(token, tokenSecret, profile, cb) {
 //    players.findOrCreate( twitterId: profile.id);
     console.log("New user profile id = " + profile.id);
-    return cb(null, profile.id);
+    return cb(null, profile);
     // User.findOrCreate({ twitterId: profile.id }, function (err, user) {
     //   return cb(err, user);
     // });
   }
 ));
+passport.serializeUser(function(user, done) {
+  console.log("serializeUser requested: user.id, user.username, user.displayName = " + user.id + user.username + user.displayName);
+  // Create the new user
+  new_player = new Player(null, user);
+  new_player.name = user.username;
+  players[user.id] = new_player;
+  // return the user id
+  done(null, user.id);
+});
+passport.deserializeUser(function(id, done) {
+  console.log("deserializeUser requested, id = " + id);
+  // fetch the user
+  done(null, players[id]); // null could instead be an error code if fail
+});
+
+// routes
+app.use('/', routes);
+app.use('/users', users);
+
+app.get('/login/twitter', passport.authenticate('twitter'));
+
+app.get('/auth/twitter/callback', passport.authenticate('twitter', { failureRedirect: '/login' }),
+  function(req, res) {
+    // Successful authentication, redirect home.
+    res.redirect('/');
+  });
+
+app.get('/login',
+  function(req, res){
+    res.render('login');
+});
+
+app.get('/profile', ensureLoggedIn(), function(req, res){
+    res.render('profile', { user: req.user.id });
+});
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {
@@ -147,6 +128,5 @@ app.use(function(err, req, res, next) {
     error: {}
   });
 });
-
 
 module.exports = app;
