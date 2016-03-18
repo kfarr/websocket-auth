@@ -1,0 +1,19 @@
+{% extends 'layout.html' %}
+
+{% block title %}Websocket Auth{% endblock %}
+
+{% block content %}
+<h1>Websocket Auth</h1>
+
+<p>
+ID: {{ user.id }}<br/>
+Username: {{ user.username }}<br/>
+Name: {{ user.displayName}}<br/>
+{% if user.emails %}
+{% for email in user.emails %}
+  Email: {{ email.value }}<br/>
+{% endfor %}
+{% endif %}
+</p>
+
+{% endblock %}
