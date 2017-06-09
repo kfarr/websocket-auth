@@ -1,8 +1,9 @@
 # websocket-auth
-Experiment to connect websocket with an authentication mechanism
+Experiment to connect twitter auth to a node/express app that hosts multi-user websocket game experience. The original game code (Without auth) is here: https://github.com/kfarr/flowvr-hackathon but this code could be applied to any node/express app.
 
 ## How to
 * clone and run `npm install`
+* add your own Twitter oauth app "consumer secret" to app.js
 * `npm start` to start the webserver
 * then point browser to `127.0.0.1:3000` # (do not use localhost:3000, it won't work through twitter oauth process)
 
